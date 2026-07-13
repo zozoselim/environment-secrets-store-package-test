@@ -1,106 +1,120 @@
+import re
+from typing import List, Optional, Union, Literal
 
 from pydantic import Field, validator
-from typing import List, Optional, Union, Literal
-from sdks.novavision.src.base.model import Package, Image, Inputs, Configs, Outputs, Response, Request, Output, Input, Config
+
+from sdks.novavision.src.base.model import (
+    Package,
+    Inputs,
+    Configs,
+    Outputs,
+    Response,
+    Request,
+    Output,
+    Config,
+)
 
 
-class InputImage(Input):
-    name: Literal["inputImage"] = "inputImage"
-    value: Union[List[Image], Image]
-    type: str = "object"
+class EmptyInputs(Inputs):
+    """Environment Secrets Store does not require workflow input."""
 
-    @validator("type", pre=True, always=True)
-    def set_type_based_on_value(cls, value, values):
-        value = values.get('value')
-        if isinstance(value, Image):
-            return "object"
-        elif isinstance(value, list):
-            return "list"
-
-    class Config:
-        title = "Image"
+    pass
 
 
-class OutputImage(Output):
-    name: Literal["outputImage"] = "outputImage"
-    value: Union[List[Image],Image]
-    type: str = "object"
-
-    @validator("type", pre=True, always=True)
-    def set_type_based_on_value(cls, value, values):
-        value = values.get('value')
-        if isinstance(value, Image):
-            return "object"
-        elif isinstance(value, list):
-            return "list"
-
-    class Config:
-        title = "Image"
-
-
-class KeepSideFalse(Config):
-    name: Literal["False"] = "False"
-    value: Literal[False] = False
-    type: Literal["bool"] = "bool"
-    field: Literal["option"] = "option"
-
-    class Config:
-        title = "Disable"
-
-
-class KeepSideTrue(Config):
-    name: Literal["True"] = "True"
-    value: Literal[True] = True
-    type: Literal["bool"] = "bool"
-    field: Literal["option"] = "option"
-
-    class Config:
-        title = "Enable"
-
-
-class KeepSideBBox(Config):
+class VariablesStoringSecrets(Config):
     """
-        Rotate image without catting off sides.
-    """
-    name: Literal["KeepSide"] = "KeepSide"
-    value: Union[KeepSideTrue, KeepSideFalse]
-    type: Literal["object"] = "object"
-    field: Literal["dropdownlist"] = "dropdownlist"
+    Environment variable names containing secret values.
 
-    class Config:
-        title = "Keep Sides"
-
-
-class Degree(Config):
+    Example:
+    ["OPENAI_API_KEY", "DATABASE_PASSWORD"]
     """
-        Positive angles specify counterclockwise rotation while negative angles indicate clockwise rotation.
-    """
-    name: Literal["Degree"] = "Degree"
-    value: int = Field(ge=-359.0, le=359.0,default=0)
-    type: Literal["number"] = "number"
+
+    name: Literal["variables_storing_secrets"] = "variables_storing_secrets"
+    value: List[str] = Field(min_length=1)
+    type: Literal["list"] = "list"
     field: Literal["textInput"] = "textInput"
-    placeHolder: Literal["[-359, 359]"] = "[-359, 359]"
+    placeHolder: Literal[
+        '["OPENAI_API_KEY", "DATABASE_PASSWORD"]'
+    ] = '["OPENAI_API_KEY", "DATABASE_PASSWORD"]'
+
+    @validator("value")
+    def validate_variable_names(cls, variable_names):
+        cleaned_names = []
+        generated_output_names = set()
+
+        for variable_name in variable_names:
+            if not isinstance(variable_name, str):
+                raise ValueError(
+                    "Environment variable names must be strings."
+                )
+
+            variable_name = variable_name.strip()
+
+            if not variable_name:
+                raise ValueError(
+                    "Environment variable names cannot be empty."
+                )
+
+            if not re.fullmatch(
+                r"[A-Za-z_][A-Za-z0-9_]*",
+                variable_name,
+            ):
+                raise ValueError(
+                    f"Invalid environment variable name: {variable_name}"
+                )
+
+            output_name = variable_name.lower()
+
+            if output_name in generated_output_names:
+                raise ValueError(
+                    "Environment variable names must generate unique "
+                    f"output names. Conflicting output: {output_name}"
+                )
+
+            generated_output_names.add(output_name)
+            cleaned_names.append(variable_name)
+
+        return cleaned_names
 
     class Config:
-        title = "Angle"
+        title = "Variables Storing Secrets"
 
 
-class PackageInputs(Inputs):
-    inputImage: InputImage
+class SecretOutput(Output):
+    """
+    Represents one secret retrieved from an environment variable.
+
+    The executor will create one SecretOutput for each requested variable.
+    """
+
+    name: str
+    value: str
+    type: Literal["string"] = "string"
+
+    class Config:
+        title = "Secret"
 
 
-class PackageConfigs(Configs):
-    degree: Degree
-    drawBBox: KeepSideBBox
+class PackageRequestConfigs(Configs):
+    variables_storing_secrets: VariablesStoringSecrets
 
 
 class PackageOutputs(Outputs):
-    outputImage: OutputImage
+    """
+    Allows outputs to be created dynamically.
+
+    Example dynamic output names:
+    - openai_api_key
+    - database_password
+    """
+
+    class Config:
+        extra = "allow"
 
 
 class PackageRequest(Request):
-    inputs: Optional[PackageInputs]
-    configs: PackageConfigs
+    inputs: Optional[EmptyInputs] = None
+    configs: PackageRequestConfigs
 
     class Config:
         json_schema_extra = {
@@ -112,14 +126,21 @@ class PackageResponse(Response):
     outputs: PackageOutputs
 
 
-class PackageExecutor(Config):
-    name: Literal["Package"] = "Package"
-    value: Union[PackageRequest, PackageResponse]
+class EnvironmentSecretsStoreExecutor(Config):
+    name: Literal[
+        "EnvironmentSecretsStore"
+    ] = "EnvironmentSecretsStore"
+
+    value: Union[
+        PackageRequest,
+        PackageResponse,
+    ]
+
     type: Literal["object"] = "object"
     field: Literal["option"] = "option"
 
     class Config:
-        title = "Package"
+        title = "Environment Secrets Store"
         json_schema_extra = {
             "target": {
                 "value": 0
@@ -129,9 +150,11 @@ class PackageExecutor(Config):
 
 class ConfigExecutor(Config):
     name: Literal["ConfigExecutor"] = "ConfigExecutor"
-    value: Union[PackageExecutor]
+    value: Union[EnvironmentSecretsStoreExecutor]
     type: Literal["executor"] = "executor"
-    field: Literal["dependentDropdownlist"] = "dependentDropdownlist"
+    field: Literal[
+        "dependentDropdownlist"
+    ] = "dependentDropdownlist"
 
     class Config:
         title = "Task"
@@ -147,4 +170,6 @@ class PackageConfigs(Configs):
 class PackageModel(Package):
     configs: PackageConfigs
     type: Literal["component"] = "component"
-    name: Literal["Package"] = "Package"
+    name: Literal[
+        "EnvironmentSecretsStore"
+    ] = "EnvironmentSecretsStore"
