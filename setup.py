@@ -1,12 +1,12 @@
 import setuptools
 
 setuptools.setup(
-    name="package",
+    name="environment-secrets-store",
     version="0.0.1",
-    author="DigiNova",
-    author_email='info@diginova.com.tr',
-    description="Package",
-    url='https://github.com/novavision-ai/package',
+    author="NovaVision AI",
+    author_email="info@novavision.ai",
+    description="Environment Secrets Store component for NovaVision",
+    url="https://github.com/zozoselim/environment-secrets-store-package-test",
     license='MIT',
     install_requires=['sdk', 'opencv-python-headless'],
 
