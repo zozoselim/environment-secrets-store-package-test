@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 
@@ -10,11 +9,9 @@ sys.path.append(
 )
 
 from components.EnvironmentSecretsStore.src.models.PackageModel import (
-    PackageModel,
+    PackageModel as Package,
 )
 
 
-schema = PackageModel.model_json_schema()
-
 with open("data.json", "w", encoding="utf-8") as file:
-    json.dump(schema, file, indent=2)
+    file.write(Package.schema_json(indent=2))
