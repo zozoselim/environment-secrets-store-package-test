@@ -3,15 +3,13 @@ import setuptools
 
 setuptools.setup(
     name="environment-secrets-store",
-    version="0.0.1",
+    version="0.0.2",
     author="NovaVision AI",
     author_email="info@novavision.ai",
     description="Environment Secrets Store component for NovaVision",
     url="https://github.com/zozoselim/environment-secrets-store-package-test",
     license="MIT",
-    install_requires=[
-        "sdk",
-    ],
+    install_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
