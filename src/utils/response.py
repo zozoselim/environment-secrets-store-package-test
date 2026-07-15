@@ -11,7 +11,7 @@ from components.EnvironmentSecretsStore.src.models.PackageModel import (
     PackageModel,
     PackageOutputs,
     PackageResponse,
-    SecretOutput,
+    SecretsOutput,
 )
 
 
@@ -19,17 +19,14 @@ def build_response(
     context,
     secrets: Dict[str, str],
 ):
-    """Create one dynamic output for each retrieved secret."""
+    """Build a response containing one static ``secrets`` output."""
 
-    dynamic_outputs = {
-        output_name: SecretOutput(
-            name=output_name,
-            value=secret_value,
+    outputs = PackageOutputs(
+        secrets=SecretsOutput(
+            value=secrets,
         )
-        for output_name, secret_value in secrets.items()
-    }
+    )
 
-    outputs = PackageOutputs(**dynamic_outputs)
     package_response = PackageResponse(outputs=outputs)
 
     component_executor = EnvironmentSecretsStoreExecutor(
