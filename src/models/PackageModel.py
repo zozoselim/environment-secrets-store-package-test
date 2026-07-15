@@ -108,7 +108,7 @@ class PackageOutputs(Outputs):
     - database_password
     """
 
-    diagnostic_secret: Optional[SecretOutput] = None
+    diagnostic_secret: SecretOutput
 
     class Config:
         extra = "allow"
