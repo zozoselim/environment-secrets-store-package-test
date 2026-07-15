@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, Union, Literal
+from typing import Dict, List, Literal, Optional, Union
 
 from pydantic import Field, validator
 
@@ -40,7 +40,7 @@ class VariablesStoringSecrets(Config):
     @validator("value")
     def validate_variable_names(cls, variable_names):
         cleaned_names = []
-        generated_output_names = set()
+        seen_names = set()
 
         for variable_name in variable_names:
             if not isinstance(variable_name, str):
@@ -63,15 +63,13 @@ class VariablesStoringSecrets(Config):
                     f"Invalid environment variable name: {variable_name}"
                 )
 
-            output_name = variable_name.lower()
-
-            if output_name in generated_output_names:
+            if variable_name in seen_names:
                 raise ValueError(
-                    "Environment variable names must generate unique "
-                    f"output names. Conflicting output: {output_name}"
+                    "Environment variable names must be unique. "
+                    f"Duplicate value: {variable_name}"
                 )
 
-            generated_output_names.add(output_name)
+            seen_names.add(variable_name)
             cleaned_names.append(variable_name)
 
         return cleaned_names
@@ -80,19 +78,23 @@ class VariablesStoringSecrets(Config):
         title = "Variables Storing Secrets"
 
 
-class SecretOutput(Output):
+class SecretsOutput(Output):
     """
-    Represents one secret retrieved from an environment variable.
+    Contains all requested environment secrets in one static output port.
 
-    The executor will create one SecretOutput for each requested variable.
+    Example value:
+    {
+        "OPENAI_API_KEY": "...",
+        "DATABASE_PASSWORD": "..."
+    }
     """
 
-    name: str
-    value: str
-    type: Literal["string"] = "string"
+    name: Literal["secrets"] = "secrets"
+    value: Dict[str, str]
+    type: Literal["object"] = "object"
 
     class Config:
-        title = "Secret"
+        title = "Secrets"
 
 
 class PackageRequestConfigs(Configs):
@@ -100,18 +102,7 @@ class PackageRequestConfigs(Configs):
 
 
 class PackageOutputs(Outputs):
-    """
-    Allows outputs to be created dynamically.
-
-    Example dynamic output names:
-    - openai_api_key
-    - database_password
-    """
-
-    diagnostic_secret: Optional[SecretOutput] = None
-
-    class Config:
-        extra = "allow"
+    secrets: SecretsOutput
 
 
 class PackageRequest(Request):

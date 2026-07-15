@@ -63,8 +63,7 @@ class EnvironmentSecretsStore(Component):
                     f"{variable_name}"
                 )
 
-            output_name = variable_name.lower()
-            secrets[output_name] = secret_value
+            secrets[variable_name] = secret_value
 
         return secrets
 
