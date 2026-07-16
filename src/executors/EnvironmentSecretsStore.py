@@ -12,7 +12,6 @@ sys.path.append(
 )
 
 from sdks.novavision.src.base.component import Component
-from sdks.novavision.src.helper.executor import Executor
 
 from components.EnvironmentSecretsStore.src.models.PackageModel import (
     PackageModel,
@@ -79,6 +78,8 @@ class EnvironmentSecretsStore(Component):
 
 
 if __name__ == "__main__":
+    from sdks.novavision.src.helper.executor import Executor
+
     if len(sys.argv) < 2:
         raise RuntimeError(
             "Executor request argument is required."
